@@ -141,6 +141,7 @@ class DeviceRegisterView(APIView):
         # 🔐 Verify Play Integrity with Google
         token = data["play_integrity_token"]
 
+        # TODO: add GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN in settings.py
         payload, error = verify_play_integrity(
             token,
             data["package_name"]
@@ -267,7 +268,7 @@ class DeviceValidateView(APIView):
 
         # Additional signals (play integrity, OS version drift)
         if "play_integrity_token" in data:
-            if not validate_play_integrity_token(data["play_integrity_token"]):
+            if not verify_play_integrity( data['play_integrity_token'], device.package_name):
                 risk_score += 20
                 risk_flags.append("PLAY_INTEGRITY_FAIL")
 

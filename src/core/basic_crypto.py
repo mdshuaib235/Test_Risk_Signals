@@ -96,7 +96,10 @@ GOOGLE_PLAY_URL = "https://playintegrity.googleapis.com/v1/{package_name}:decode
 
 def verify_play_integrity(token, package_name):
     url = GOOGLE_PLAY_URL.format(package_name=package_name)
-
+    #  TODO: add this in settings after deploy 'GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN'
+    #   1. A Google Cloud project linked to your app
+    #   2. Play Integrity API enabled
+    #   3. A valid GCP service account credential that your backend can use to get an access token
     headers = {
         "Authorization": f"Bearer {settings.GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN}",
         "Content-Type": "application/json"
