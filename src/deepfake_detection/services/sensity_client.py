@@ -88,56 +88,73 @@ class SensityClient(ProviderClient):
         media_url: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        """
-        Create Sensity tasks.
-        Supports:
-            - media_url (public URL)
-            - media_file (auto-upload via uploader hook)
-        """
+
+        print("started create_tasks of sensity...")
 
         media_type = kwargs.get("media_type")
         report_ids = {}
 
-        try:
-            # Step 1 — ensure we have public URL
-            final_url = self._resolve_media_url(media_file, media_url)
+        if not media_type:
+            return {"error": "media_type is required"}
 
-            if not final_url:
-                return {
-                    "error": "Public media_url is required for Sensity processing."
-                }
+        tasks = TASK_MAP.get(media_type)
+        if not tasks:
+            return {"error": f"No tasks configured for media_type={media_type}"}
 
-            # Step 2 — create tasks
-            for task_name in TASK_MAP.get(media_type, []):
-                try:
-                    payload = {"url": final_url}
-                    print(f'payload:{payload}, url: {BASE_URL}/{task_name}, ')
-                    response = self.session.post(
-                        f"{BASE_URL}/{task_name}",
-                        json=payload,
-                        files={"url": (None, final_url)},
-                        timeout=30,
+        # Ensure only one provided
+        if media_file and media_url:
+            return {"error": "Provide either media_file OR media_url, not both"}
 
-                    )
+        if not media_file and not media_url:
+            return {"error": "Provide media_file or media_url"}
 
-                    response.raise_for_status()
-                    body = response.json()
+        for task_name in tasks:
+            try:
 
-                    # Sensity usually returns task_id
-                    report_ids[task_name] = (
-                        body.get("task_id")
-                        or body.get("report_id")
-                    )
+                if media_url:
+                    # multipart with URL
+                    files = {"url": (None, media_url)}
 
-                except requests.exceptions.HTTPError as e:
-                    report_ids[task_name] = {
-                        "error": f"{e.response.status_code} - {e.response.text}"
+                else:
+                    # Important: reset pointer if reused
+                    media_file.seek(0)
+
+                    files = {
+                        "file": (
+                            media_file.name,
+                            media_file,
+                            media_file.content_type
+                        )
                     }
-                except Exception as e:
-                    report_ids[task_name] = {"error": str(e)}
 
-        except Exception as e:
-            return {"error": str(e)}
+                print(
+                    f"Calling Sensity API: {BASE_URL}/{task_name}"
+                )
+
+                response = self.session.post(
+                    f"{BASE_URL}/{task_name}",
+                    files=files,
+                    timeout=60,
+                )
+
+                print("Status:", response.status_code)
+                print("Response:", response.text)
+
+                response.raise_for_status()
+
+                body = response.json()
+
+                report_ids[task_name] = (
+                    body.get("task_id")
+                    or body.get("report_id")
+                )
+
+            except requests.exceptions.HTTPError as e:
+                report_ids[task_name] = {
+                    "error": f"{e.response.status_code} - {e.response.text}"
+                }
+            except Exception as e:
+                report_ids[task_name] = {"error": str(e)}
 
         return report_ids
 
@@ -145,6 +162,7 @@ class SensityClient(ProviderClient):
         """
         Fetch results for created tasks
         """
+        print('started get_results of sensity...')
         results = {}
 
         for task_name, report_id in report_ids.items():
@@ -154,13 +172,17 @@ class SensityClient(ProviderClient):
                 continue
 
             try:
+                print(f" actual sensity result api call : url : {BASE_URL}/{task_name}/{report_id} GET")
                 response = self.session.get(
                     f"{BASE_URL}/{task_name}/{report_id}",
                     timeout=30,
                 )
 
+                
                 response.raise_for_status()
                 results[task_name] = response.json()
+                print(f"complete actual sensity result api call: response: {response.json()}")
+
 
             except requests.exceptions.HTTPError as e:
                 results[task_name] = {
@@ -168,69 +190,17 @@ class SensityClient(ProviderClient):
                 }
             except Exception as e:
                 results[task_name] = {"error": str(e)}
-
+        print('completed get_results of sensity...')
         return results
 
-    def wait_for_completion(
-        self,
-        task_name: str,
-        report_id: str,
-        timeout: int = 120,
-        interval: int = 5,
-    ):
-        """
-        Poll until task completed
-        """
-
-        start_time = time.time()
-
-        while True:
-            response = self.session.get(
-                f"{BASE_URL}/{task_name}/{report_id}",
-                timeout=30,
-            )
-
-            response.raise_for_status()
-            data = response.json()
-
-            status = data.get("status")
-
-            if status in ["completed", "finished", "done"]:
-                return data
-
-            if status in ["failed", "error"]:
-                return data
-
-            if time.time() - start_time > timeout:
-                raise TimeoutError("Sensity task did not complete in time")
-
-            time.sleep(interval)
-
-    # -----------------------------
-    # INTERNAL HELPERS
-    # -----------------------------
 
     def _resolve_media_url(self, media_file, media_url: Optional[str]) -> Optional[str]:
-        """
-        If media_url provided → use it
-        If media_file provided → upload via configured uploader
-        """
-
-        # Case 1: already public URL
+        
         if media_url:
             return media_url
 
-        # Case 2: file upload
         if media_file:
-            uploader = getattr(settings, "SENSITY_FILE_UPLOADER", None)
-
-            if not uploader:
-                raise ValueError(
-                    "Media file provided but no SENSITY_FILE_UPLOADER configured."
-                )
-
-            # uploader must return public URL
-            return uploader(media_file)
+            return media_file
 
         return None
 

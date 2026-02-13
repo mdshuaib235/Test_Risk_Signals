@@ -250,7 +250,6 @@ class DeviceValidateView(APIView):
             risk_score += 50
             risk_flags.append("DEVICE_MISMATCH")
 
-        # Check SIM ICCID
         # IF SIM has changed can perform SNA (better to give seperate options to banks for on-demand SNA (just verifying number is active in this device))
         if device.sim_iccid_hash != data["sim_iccid_hash"]:
             risk_score += 40
@@ -271,8 +270,6 @@ class DeviceValidateView(APIView):
             if not verify_play_integrity( data['play_integrity_token'], device.package_name):
                 risk_score += 20
                 risk_flags.append("PLAY_INTEGRITY_FAIL")
-
-        
 
         # Decide recommendation
         recommendation = "ALLOW"
@@ -340,7 +337,7 @@ class DeviceRebindView(APIView):
             "play_integrity_token",
         ]
 
-        # 🔎 2. Validate Required Fields
+        # 2. Validate Required Fields
         for field in required_fields:
             if not data.get(field):
                 return Response(
@@ -348,7 +345,7 @@ class DeviceRebindView(APIView):
                     status=400
                 )
 
-        # 🔎 3. Validate App Is Registered
+        # 3. Validate App Is Registered
         app_exists = RegisteredApp.objects.filter(
             bank=bank,
             package_name=data["package_name"],
@@ -361,7 +358,7 @@ class DeviceRebindView(APIView):
                 status=403
             )
 
-        # 🔐 4. Verify Play Integrity With Google
+        # 4. Verify Play Integrity With Google
         token = data["play_integrity_token"]
 
         payload, error = verify_play_integrity(
@@ -394,21 +391,21 @@ class DeviceRebindView(APIView):
                 status=403
             )
 
-        # 🔎 5. Verify Google Package Name Matches
+        # 5. Verify Google Package Name Matches
         if package_name_from_google != data["package_name"]:
             return Response(
                 {"decision": "BLOCK", "reason": "Package mismatch"},
                 status=403
             )
 
-        # 🔎 6. Check Device Integrity Verdict
+        # 6. Check Device Integrity Verdict
         if "MEETS_DEVICE_INTEGRITY" not in device_verdict:
             return Response(
                 {"decision": "BLOCK", "reason": "Device integrity failed"},
                 status=403
             )
 
-        # 🔁 7. Atomic Rebind Operation
+        # 7. Atomic Rebind Operation
         with transaction.atomic():
 
             # Revoke previous active devices

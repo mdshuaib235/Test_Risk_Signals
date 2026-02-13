@@ -3,10 +3,7 @@
 You need from Bank:
 Official package name
 1. Example: com.bankname.mobile
-
 2. Official signing certificate SHA256 fingerprint
-
-
 
 
 ****************************************** USAGES (flow)Endpoint ******************************************
@@ -114,3 +111,20 @@ Signature is created by:
     Then signed using bank private RSA key
 
 You verify using stored bank.public_key.
+
+
+
+
+
+
+
+curl --location 'https://open-gateway-sandbox.gsma.com/sim-swap/v1/check'  \
+--header 'Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJEc1hnZXp3d3hnT2JZUjFxQlZ6cWpycXpuOXZTOWJBU3Jub3RxclNjX253In0.eyJleHAiOjE3NzA5ODE3MzksImlhdCI6MTc3MDk4MTQzOSwianRpIjoidHJydGNjOjJiMmU0ZTJjLTFlNTktN2FkZi0zMGIxLWI1NTRlZmZjNjJmMCIsImlzcyI6Imh0dHBzOi8vb3Blbi1nYXRld2F5LXNhbmRib3guZ3NtYS5jb20vYXV0aC9yZWFsbXMvY2FtYXJhIiwic3ViIjoiM2IwNDJhODAtMTZhYi00MmUzLTk2OWMtYWZhN2U3NTY0NWM1IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiOTRiYjI0NDctYmZlMC00N2ZmLWI2NTgtNzk1OTIzZjZjMDQ4Iiwic2NvcGUiOiJzaW0tc3dhcDpjaGVjayBkcHY6RnJhdWRQcmV2ZW50aW9uQW5kRGV0ZWN0aW9uIHNpbS1zd2FwOnJldHJpZXZlLWRhdGUiLCJjbGllbnRIb3N0IjoiMTAuMC4yLjI3IiwiY2xpZW50QWRkcmVzcyI6IjEwLjAuMi4yNyIsImNsaWVudF9pZCI6Ijk0YmIyNDQ3LWJmZTAtNDdmZi1iNjU4LTc5NTkyM2Y2YzA0OCJ9.QUAdWm0VD0eUsNMFstd2GjbPfZ5_hgKbIfngZnClpx8GmhHVDOKuJgTyn63MCFrF2HmCdkOqdghMzkPOU1LMDF0TALlf3oKs47wfSXEaQr8HJTI565FJ9AdMosmh43ZuhT6HdPp7CPaaYPd8UOsHPCXpLM7vV1rGyA8ass9K51I8LaDRXh5c3sy4ZOwgntfdbWBxvY8N7a_PZ6QqmCmwd-cux1jZQhfNF_CSCcnV80WdhrILhr6ASKZRkS7vVEA0ZNS2TyYef5xaAdpq_SMJlWxLcpQwO7sf7QvAm5xX3XeQwFF5RY7duiwId03jmNu4rDh4bS3Rj1kTHpZ5gRmz2A' \
+--header 'Content-Type: application/json'  \
+--data '{"phoneNumber":"+919818425790","maxAge":120}'
+
+
+curl --location 'https://open-gateway-sandbox.gsma.com/sim-swap/v1/retrieve-date'  \
+--header 'Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJEc1hnZXp3d3hnT2JZUjFxQlZ6cWpycXpuOXZTOWJBU3Jub3RxclNjX253In0.eyJleHAiOjE3NzA5ODE3MzksImlhdCI6MTc3MDk4MTQzOSwianRpIjoidHJydGNjOjJiMmU0ZTJjLTFlNTktN2FkZi0zMGIxLWI1NTRlZmZjNjJmMCIsImlzcyI6Imh0dHBzOi8vb3Blbi1nYXRld2F5LXNhbmRib3guZ3NtYS5jb20vYXV0aC9yZWFsbXMvY2FtYXJhIiwic3ViIjoiM2IwNDJhODAtMTZhYi00MmUzLTk2OWMtYWZhN2U3NTY0NWM1IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiOTRiYjI0NDctYmZlMC00N2ZmLWI2NTgtNzk1OTIzZjZjMDQ4Iiwic2NvcGUiOiJzaW0tc3dhcDpjaGVjayBkcHY6RnJhdWRQcmV2ZW50aW9uQW5kRGV0ZWN0aW9uIHNpbS1zd2FwOnJldHJpZXZlLWRhdGUiLCJjbGllbnRIb3N0IjoiMTAuMC4yLjI3IiwiY2xpZW50QWRkcmVzcyI6IjEwLjAuMi4yNyIsImNsaWVudF9pZCI6Ijk0YmIyNDQ3LWJmZTAtNDdmZi1iNjU4LTc5NTkyM2Y2YzA0OCJ9.QUAdWm0VD0eUsNMFstd2GjbPfZ5_hgKbIfngZnClpx8GmhHVDOKuJgTyn63MCFrF2HmCdkOqdghMzkPOU1LMDF0TALlf3oKs47wfSXEaQr8HJTI565FJ9AdMosmh43ZuhT6HdPp7CPaaYPd8UOsHPCXpLM7vV1rGyA8ass9K51I8LaDRXh5c3sy4ZOwgntfdbWBxvY8N7a_PZ6QqmCmwd-cux1jZQhfNF_CSCcnV80WdhrILhr6ASKZRkS7vVEA0ZNS2TyYef5xaAdpq_SMJlWxLcpQwO7sf7QvAm5xX3XeQwFF5RY7duiwId03jmNu4rDh4bS3Rj1kTHpZ5gRmz2A' \
+--header 'Content-Type: application/json'  \
+--data '{"phoneNumber":"+919818425790"}'

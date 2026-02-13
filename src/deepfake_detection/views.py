@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+import uuid
 # Create your views here.
 from rest_framework.views import APIView
 from rest_framework import status
@@ -66,15 +66,29 @@ class UploadMediaAPIViews(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        clean_payload = request.data.copy()
-        print('ddddddddddddddddddddddddddd')
+        clean_payload = {
+            "provider": provider_name,
+            "media_type": media_type,
+        }
+
+        if media_url:
+            clean_payload["media_url"] = media_url
+
+        if media_file:
+            clean_payload["media"] = {
+                "filename": media_file.name,
+                "size": media_file.size,
+                "content_type": media_file.content_type,
+            }
         file_obj = media_file
+
         if file_obj:
             clean_payload["media"] = {
                 "filename": file_obj.name,
                 "size": file_obj.size,
                 "content_type": file_obj.content_type,
             }
+        print(f'data from views upload media api: data:{clean_payload}')
 
         deepfake_task = DeepfakeTask.objects.create(
             provider=provider,
@@ -85,14 +99,18 @@ class UploadMediaAPIViews(APIView):
             status="submitted"
         )
 
-        clientClass = ClientClassMap[provider_name]
-        client = clientClass(token=provider.token)
+        # clientClass = ClientClassMap[provider_name]
+        # client = clientClass(token=provider.token)
 
+        client = SensityClient(provider.token)
+        print('will client.create_tasks() from views...')
         report_ids = client.create_tasks(
             media_file=media_file,
             media_url=media_url,
             media_type=media_type
         )
+        print(f'completed client.create_tasks() from views and here is report_ids:{report_ids}...')
+
 
         deepfake_task.report_ids = report_ids
         deepfake_task.save()
@@ -110,7 +128,12 @@ class DeepfakeStatusView(APIView):
     permission_classes = []
 
     def get(self, request, task_uuid):
-
+        try:
+            task_uuid = uuid.UUID(task_uuid)
+        except Exception as err:
+            print('INVALID UUID format')
+            
+        print(f"started deepfake status views ...")
         try:
             task = DeepfakeTask.objects.get(id=task_uuid)
         except DeepfakeTask.DoesNotExist:
@@ -131,7 +154,7 @@ class DeepfakeStatusView(APIView):
         task.response_full = results
         task.status = overall
         task.save()
-
+        print(f"completed deepfake status views with db-parent-task status: { task.status} ...")
         return Response({
             "status": task.status,
             "results": results

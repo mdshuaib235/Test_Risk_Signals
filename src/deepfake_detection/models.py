@@ -45,7 +45,8 @@ class DeepfakeTask(models.Model):
 
     request_payload = models.JSONField(null=True, blank=True)
     report_ids = models.JSONField(null=True, blank=True)
-    response_full = models.JSONField(null=True, blank=True)
+    response_full = models.JSONField(null=True, blank=True) 
+    #  result
 
     status = models.CharField(max_length=50, default="created")
     created_at = models.DateTimeField(auto_now_add=True)
