@@ -1,6 +1,5 @@
 from django.shortcuts import render
 import uuid
-# Create your views here.
 from rest_framework.views import APIView
 from rest_framework import status
 from deepfake_detection.services.sensity_client import SensityClient, TASK_MAP , ClientClassMap
@@ -13,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
 
-# @method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class UploadMediaAPIViews(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     authentication_classes = []
@@ -98,7 +97,7 @@ class UploadMediaAPIViews(APIView):
             request_payload=dict(clean_payload),
             status="submitted"
         )
-
+        
         # clientClass = ClientClassMap[provider_name]
         # client = clientClass(token=provider.token)
 
@@ -110,7 +109,6 @@ class UploadMediaAPIViews(APIView):
             media_type=media_type
         )
         print(f'completed client.create_tasks() from views and here is report_ids:{report_ids}...')
-
 
         deepfake_task.report_ids = report_ids
         deepfake_task.save()
@@ -132,7 +130,7 @@ class DeepfakeStatusView(APIView):
             task_uuid = uuid.UUID(task_uuid)
         except Exception as err:
             print('INVALID UUID format')
-            
+
         print(f"started deepfake status views ...")
         try:
             task = DeepfakeTask.objects.get(id=task_uuid)
@@ -141,10 +139,8 @@ class DeepfakeStatusView(APIView):
 
         client = SensityClient(token=task.provider.token)
 
-        # Fetch results for all tasks
         results = client.get_results(task.report_ids or {})
 
-        # Decide final status
         overall = "completed"
         for r in results.values():
             if isinstance(r, dict) and r.get("status") != "completed":

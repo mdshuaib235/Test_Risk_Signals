@@ -100,6 +100,8 @@ def verify_play_integrity(token, package_name):
     #   1. A Google Cloud project linked to your app
     #   2. Play Integrity API enabled
     #   3. A valid GCP service account credential that your backend can use to get an access token
+    if not getattr(settings, 'GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN'):
+        return 'GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN is required', False
     headers = {
         "Authorization": f"Bearer {settings.GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN}",
         "Content-Type": "application/json"
@@ -110,6 +112,6 @@ def verify_play_integrity(token, package_name):
     }, headers=headers)
 
     if response.status_code != 200:
-        return None, "Google verification failed"
+        return "Google verification failed", None
 
     return response.json(), None
