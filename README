@@ -1,0 +1,120 @@
+📋 Prerequisites (Before You Code)
+
+You need from Bank:
+Official package name
+1. Example: com.bankname.mobile
+2. Official signing certificate SHA256 fingerprint
+
+
+****************************************** USAGES (flow)Endpoint ******************************************
+POST /api/v1/app/verify
+Request (From Bank App)
+{
+  "package_name": "com.bankname.mobile",
+  "certificate_sha256": "AB:CD:EF:12:34...",
+  "device_id": "device123xyz"
+}
+
+Headers:
+X-API-KEY: bank_key_123
+X-TIMESTAMP: 1707550000
+X-SIGNATURE: generated_hmac
+
+Backend Logic (Step-by-Step)
+    Validate API key
+    Fetch api_secret
+    Recalculate HMAC
+    Validate timestamp (±5 minutes)
+    Fetch registered app by:
+    bank_id
+    package_name
+    Compare:
+        certificate_sha256 from DB
+        certificate_sha256 from request
+
+
+
+
+
+
+
+
+
+
+
+
+Endpoint
+POST /api/v1/app/register
+Request (Signed by Bank Private Key)
+{
+  "bank_id": "uuid",
+  "package_name": "com.bank.mobile",
+  "certificate_sha256": "ABCD1234..."
+}
+
+Headers:
+X-Signature: base64_signature
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+🔐 SECURITY ASSUMPTION
+
+Bank backend sends headers:
+
+X-API-KEY
+X-SIGNATURE
+X-TIMESTAMP
+X-NONCE
+Content-Type: application/json
+
+Signature is created by:
+    SHA256(request_body + timestamp + nonce)
+    Then signed using bank private RSA key
+
+You verify using stored bank.public_key.
+
+
+
+
+
+
+
