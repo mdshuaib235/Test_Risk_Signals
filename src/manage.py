@@ -16,7 +16,23 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+    #  expose ngrok
+    from pyngrok import ngrok
+    import requests
+    
+    try:
+        ngrok.kill()
+        response = requests.get("http://127.0.0.1:4040/api/tunnels")
+        tunnels = response.json()["tunnels"]
+        print(f'NGROK URL : {tunnels[0]["public_url"]}')
+    except Exception as e:
+        print("Ngrok not running:", e)
+        return None
+
+   
+
     execute_from_command_line(sys.argv)
+
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@
 import requests
 import time
 
-from django.conf import settings
 from deepfake_detection.models import ServiceProviderChoices, ServiceProvider, SensityTaskChoices
 import requests
 import requests
@@ -81,16 +80,14 @@ class SensityClient(ProviderClient):
             "Accept": "application/json",
         })
 
-   
+    # use httpx/aiohttp instead of requests (for async requests)
     def create_tasks(
         self,
         media_file=None,
         media_url: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
-
         print("started create_tasks of sensity...")
-
         media_type = kwargs.get("media_type")
         report_ids = {}
 
@@ -107,21 +104,25 @@ class SensityClient(ProviderClient):
 
         if not media_file and not media_url:
             return {"error": "Provide media_file or media_url"}
-
+        
+        base_ngrok_url, localhost = build_public_media_url(), 'http://127.0.0.1:8000'
         for task_name in tasks:
             try:
 
                 if media_url:
-                    # multipart with URL
+                    if localhost in media_url and base_ngrok_url :
+                        media_url = media_url.replace(localhost, base_ngrok_url)
                     files = {"url": (None, media_url)}
 
                 else:
                     # Important: reset pointer if reused
                     media_file.seek(0)
-
+                    media_file_name = media_file.name
+                    if localhost in media_file_name and base_ngrok_url:
+                        media_file_name = media_file_name.replace(localhost, base_ngrok_url)
                     files = {
                         "file": (
-                            media_file.name,
+                            media_file_name,
                             media_file,
                             media_file.content_type
                         )
@@ -159,9 +160,7 @@ class SensityClient(ProviderClient):
         return report_ids
 
     def get_results(self, report_ids: dict) -> Dict[str, Any]:
-        """
-        Fetch results for created tasks
-        """
+        
         print('started get_results of sensity...')
         results = {}
 
@@ -177,12 +176,9 @@ class SensityClient(ProviderClient):
                     f"{BASE_URL}/{task_name}/{report_id}",
                     timeout=30,
                 )
-
-                
                 response.raise_for_status()
                 results[task_name] = response.json()
                 print(f"complete actual sensity result api call: response: {response.json()}")
-
 
             except requests.exceptions.HTTPError as e:
                 results[task_name] = {
@@ -194,16 +190,22 @@ class SensityClient(ProviderClient):
         return results
 
 
-    def _resolve_media_url(self, media_file, media_url: Optional[str]) -> Optional[str]:
-        
-        if media_url:
-            return media_url
+import requests
 
-        if media_file:
-            return media_file
 
+def build_public_media_url():
+    if settings.DEBUG:
+        # ngrok should be running manually for testing
+        try:
+            tunnels = requests.get("http://127.0.0.1:4040/api/tunnels").json()
+            return tunnels["tunnels"][0]["public_url"]
+        except Exception:
+            return None
+    else:
+        #  return hosted/deployed domain after deployments
         return None
 
+    
 
 ClientClassMap = {
     "SENSITY": SensityClient,
