@@ -1,8 +1,11 @@
-from django.test import TestCase
-from rest_framework.test import APIClient
-from django.utils import timezone
 from unittest.mock import patch
+
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.test import APIClient
+
 from core.models import Bank, RegisteredApp, UserDevice
+
 
 class SecurityFlowTests(TestCase):
 
@@ -13,16 +16,14 @@ class SecurityFlowTests(TestCase):
             name="Test Bank",
             api_key="test-api-key",
             public_key="dummy-public-key",
-            is_active=True
+            is_active=True,
         )
 
-        self.headers = {
-            "HTTP_X_API_KEY": self.bank.api_key
-        }
+        self.headers = {"HTTP_X_API_KEY": self.bank.api_key}
 
         self.app_payload = {
             "package_name": "com.test.bank",
-            "certificate_hash_sha256": "abc123"
+            "certificate_hash_sha256": "abc123",
         }
 
         self.device_payload = {
@@ -33,7 +34,7 @@ class SecurityFlowTests(TestCase):
             "hardware_key_id": "hw-key-id",
             "package_name": "com.test.bank",
             "certificate_hash_sha256": "abc123",
-            "play_integrity_token": "fake-jwt-token"
+            "play_integrity_token": "fake-jwt-token",
         }
 
     # ---------------------------------------------------
@@ -42,12 +43,8 @@ class SecurityFlowTests(TestCase):
     def test_bank_register(self):
         response = self.client.post(
             "/v1/bank/register/",
-            {
-                "name": "Another Bank",
-                "api_key": "new-key",
-                "public_key": "pem-key"
-            },
-            format="json"
+            {"name": "Another Bank", "api_key": "new-key", "public_key": "pem-key"},
+            format="json",
         )
         self.assertEqual(response.status_code, 200)
 
@@ -59,10 +56,7 @@ class SecurityFlowTests(TestCase):
         mock_verify.return_value = (self.bank, None)
 
         response = self.client.post(
-            "/v1/app/register/",
-            self.app_payload,
-            format="json",
-            **self.headers
+            "/v1/app/register/", self.app_payload, format="json", **self.headers
         )
 
         self.assertEqual(response.status_code, 201)
@@ -80,27 +74,22 @@ class SecurityFlowTests(TestCase):
             {
                 "tokenPayloadExternal": {
                     "deviceIntegrity": {
-                        "deviceRecognitionVerdict": [
-                            "MEETS_DEVICE_INTEGRITY"
-                        ]
+                        "deviceRecognitionVerdict": ["MEETS_DEVICE_INTEGRITY"]
                     }
                 }
             },
-            None
+            None,
         )
 
         RegisteredApp.objects.create(
             bank=self.bank,
             package_name="com.test.bank",
             certificate_hash_sha256="abc123",
-            encrypted_certificate=b""
+            encrypted_certificate=b"",
         )
 
         response = self.client.post(
-            "/v1/device/register/",
-            self.device_payload,
-            format="json",
-            **self.headers
+            "/v1/device/register/", self.device_payload, format="json", **self.headers
         )
 
         self.assertEqual(response.status_code, 200)
@@ -154,13 +143,11 @@ class SecurityFlowTests(TestCase):
             {
                 "tokenPayloadExternal": {
                     "deviceIntegrity": {
-                        "deviceRecognitionVerdict": [
-                            "MEETS_DEVICE_INTEGRITY"
-                        ]
+                        "deviceRecognitionVerdict": ["MEETS_DEVICE_INTEGRITY"]
                     }
                 }
             },
-            None
+            None,
         )
 
         UserDevice.objects.create(
@@ -172,14 +159,11 @@ class SecurityFlowTests(TestCase):
             hardware_key_id="hwid",
             package_name="com.test.bank",
             certificate_hash_sha256="abc123",
-            play_integrity_verdict="MEETS_DEVICE_INTEGRITY"
+            play_integrity_verdict="MEETS_DEVICE_INTEGRITY",
         )
 
         response = self.client.post(
-            "/v1/device/rebind/",
-            self.device_payload,
-            format="json",
-            **self.headers
+            "/v1/device/rebind/", self.device_payload, format="json", **self.headers
         )
 
         self.assertEqual(response.status_code, 200)
@@ -202,7 +186,7 @@ class SecurityFlowTests(TestCase):
             package_name="com.test.bank",
             certificate_hash_sha256="abc123",
             play_integrity_verdict="MEETS_DEVICE_INTEGRITY",
-            status="ACTIVE"
+            status="ACTIVE",
         )
 
         response = self.client.post(

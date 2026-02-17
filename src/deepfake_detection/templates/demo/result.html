@@ -89,7 +89,7 @@
         </div>
 
         <!-- BASIC INFO -->
-        <div class="row mb-4">
+        <div class="row mb-2">
             <div class="col-md-4">
                 <strong>Status:</strong>
                 {% if data.status == "completed" %}
@@ -110,7 +110,7 @@
 
         <!-- MEDIA PREVIEW -->
         {% if media_url %}
-        <div class="mb-4">
+        <div class="mb-2">
             <div class="section-title">Media Preview</div>
 
             {% if data.media_type == "video" %}
@@ -126,7 +126,7 @@
         <!-- FACE MANIPULATION -->
         {% if data.results.face_manipulation %}
         <div class="mb-4">
-            <div class="section-title">Face Manipulation Detection</div>
+            <div class="section-title"  style="">Face Manipulation Detection</div>
 
             {% with fm=data.results.face_manipulation %}
                 {% if fm.result.class_name == "fake" %}
@@ -147,7 +147,7 @@
         <!-- AI GENERATED IMAGE -->
         {% if data.results.ai_generated_image_detection %}
         <div class="mb-4">
-            <div class="section-title">AI Generated Image Detection</div>
+            <div class="section-title"  style="" >AI Generated Image Detection</div>
 
             {% with ai=data.results.ai_generated_image_detection %}
                 {% if ai.result.class_name == "fake" %}
@@ -162,7 +162,7 @@
         <!-- FORENSIC ANALYSIS -->
         {% if data.results.forensic_analysis %}
         <div class="mb-4">
-            <div class="section-title">Forensic Analysis</div>
+            <div class="section-title"  style="">Forensic Analysis</div>
 
             {% with fa=data.results.forensic_analysis.result %}
 
@@ -219,9 +219,94 @@
         </div>
         {% endif %}
 
+        <!-- VOICE ANALYSIS -->
+        {% if data.results.voice_analysis %}
+        <div class="mb-4">
+            <div class="section-title"  style="">Voice Analysis</div>
+
+            {% with va=data.results.voice_analysis %}
+                {% if va.result.class_name == "synthetic" %}
+                    <span class="badge badge-status badge-fake">AI Generated Voice</span>
+                {% elif va.result.class_name == "real" %}
+                    <span class="badge badge-status badge-real">Real Voice</span>
+                {% elif va.result.class_name == "no_voice" %}
+                    <span class="badge badge-status bg-secondary">No Voice Detected</span>
+                {% else %}
+                    <span class="badge badge-status bg-secondary">
+                        {{ va.result.class_name|default:"Unknown" }}
+                    </span>
+                {% endif %}
+
+                {% if va.result.class_probability %}
+                    <div class="mt-2">
+                        Confidence: {{ va.result.class_probability|floatformat:2 }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+        {% endif %}
+
+        <!-- LIVENESS DETECTION -->
+        {% if data.results.liveness_detection %}
+        <div class="mb-4">
+            <div class="section-title"  style="">Liveness Detection</div>
+
+            {% with lv=data.results.liveness_detection %}
+                
+                {% if lv.no_faces %}
+                    <span class="badge badge-status bg-secondary">
+                        No Face Detected
+                    </span>
+                {% else %}
+                    {% if lv.result.live == "Live" %}
+                        <span class="badge badge-status badge-real">
+                            Live Person
+                        </span>
+                    {% elif lv.result.live == "Spoof" %}
+                        <span class="badge badge-status badge-fake">
+                            Spoof Attempt
+                        </span>
+                    {% else %}
+                        <span class="badge badge-status bg-secondary">
+                            {{ lv.result.live|default:"Unknown" }}
+                        </span>
+                    {% endif %}
+                {% endif %}
+
+                <!-- Image Quality Checks -->
+                {% if lv.result.image_quality_checks %}
+                <div class="mt-3">
+                    <h6>Image Quality Checks</h6>
+
+                    {% for check in lv.result.image_quality_checks %}
+                        <div class="claim-card">
+                            <strong>{{ check.quality_check_type|capfirst }}</strong>
+                            <div>
+                                Result:
+                                {% if check.result == "Passed" %}
+                                    <span class="badge bg-success">Passed</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </div>
+
+                            {% if check.error_message %}
+                                <div class="text-danger">
+                                    Error: {{ check.error_message }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+            {% endwith %}
+        </div>
+        {% endif %}
+
         <!-- FULL JSON -->
         <div class="mt-4">
-            <button class="btn btn-outline-info btn-sm" data-bs-toggle="collapse" data-bs-target="#fullJson">
+            <button class="btn btn-outline-info btn-sm" data-bs-toggle="collapse" data-bs-target="#fullJson" style="">
                 View Full API Response
             </button>
 

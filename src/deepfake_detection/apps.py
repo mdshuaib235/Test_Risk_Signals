@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class DeepfakeDetectionConfig(AppConfig):
-    name = 'deepfake_detection'
+    name = "deepfake_detection"

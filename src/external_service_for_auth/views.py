@@ -1,49 +1,58 @@
-from django.shortcuts import render
-from django.shortcuts import render
-import uuid
-from rest_framework.views import APIView
-from rest_framework import status
-from vonage import Auth, Vonage
-from vonage import NetworkSimSwap
-
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.http import JsonResponse
-import requests
-import os
 import json
+import os
+import uuid
 
-# TODO: convert GET api to POST 
+import requests
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from vonage import Auth, NetworkSimSwap, Vonage
+from vonage_network_sim_swap import SwapStatus
+from vonage_network_sim_swap.requests import SimSwapCheckRequest
+from vonage_network_auth import NetworkAuth
+from vonage_http_client import HttpClient
+from django.conf import settings
+import os
+import requests
+from django.conf import settings
+
+# TODO: convert GET api to POST
 class TestNumberInsights(APIView):
 
+    def get(self, request, phone_number: str, *args, **kwargs):
 
-    def get(self, request , phone_number:str,  *args , **kwargs):
-        
         url = "https://api.nexmo.com/ni/advanced/json"
 
         params = {
             "api_key": os.getenv("VONAGE_API_KEY"),
             "api_secret": os.getenv("VONAGE_API_SECRET"),
-            "number": phone_number
+            "number": phone_number,
         }
-                
+
         try:
             response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
         except requests.RequestException as e:
             return Response(
                 {"error": "Failed to fetch data from Vonage", "details": str(e)},
-                status=status.HTTP_502_BAD_GATEWAY
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
         try:
-            data = response.json() 
+            data = response.json()
         except Exception as e:
             return Response(
-                {"error": "Failed to parse JSON from Vonage", "raw": response.text, "details": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {
+                    "error": "Failed to parse JSON from Vonage",
+                    "raw": response.text,
+                    "details": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         return Response(data, status=status.HTTP_200_OK)
@@ -61,30 +70,93 @@ class TestNumberInsights(APIView):
         # )
         # print(response)
 
+
 class VerifyStartAPIView(APIView):
-    def get(self, request, number:str):
-        
+    def get(self, request, number: str):
+
         response = requests.post(
             "https://api.nexmo.com/verify/json",
-            data = {
-                "api_key": os.getenv("VONAGE_API_KEY"),
-                "api_secret": os.getenv("VONAGE_API_SECRET"),
-                "number": number,
-                "brand": "YourBankApp"
-            }
-        )
-        return Response(response.json())
-    
-class VerifyCheckAPIView(APIView):
-    def get(self, request, number, code):
-       
-        response = requests.post(
-            "https://api.verify.vonage.com/check",
             data={
                 "api_key": os.getenv("VONAGE_API_KEY"),
                 "api_secret": os.getenv("VONAGE_API_SECRET"),
-                "request_id": code,
-                "code": code
-            }
+                "number": number,
+                "brand": "YourBankApp",
+            },
+            timeout=10,
+        )
+        
+
+
+        return Response(response.json())
+
+
+class VerifyCheckAPIView(APIView):
+    def get(self, request, number, code, request_id):
+
+        response = requests.post(
+            "https://api.nexmo.com/verify/check/json",
+            data={
+                "api_key": os.getenv("VONAGE_API_KEY"),
+                "api_secret": os.getenv("VONAGE_API_SECRET"),
+                "request_id": request_id,
+                "code": code,
+            },
+            timeout=10
         )
         return Response(response.json())
+
+
+
+
+class NetworkSimSwapAPIView(APIView):
+    def get(self, request, phone):
+        try:
+            # NOTE: will work after organization onboarding on vonage for key and application-id (network-auth)
+            # Create HTTP client (will handle OAuth token internally)
+            http_client = HttpClient(
+                api_key=os.getenv('VONAGE_API_KEY'),
+                api_secret=os.getenv('VONAGE_API_SECRET'),
+            )
+
+            network_auth = NetworkAuth(http_client)
+            sim_swap_api = NetworkSimSwap(http_client)
+
+            request_model = SimSwapCheckRequest(
+                phone_number=phone,
+                max_age=240
+            )
+
+            swap_status: SwapStatus = sim_swap_api.check(request_model)
+
+            return Response({
+                "swapped": swap_status.swapped,
+                "last_swap_date": getattr(swap_status, "last_swap_date", None)
+            })
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+        
+        
+# OPEN GSMA gateapi / CAMARA suite project using sanbox
+from .utils import call_sim_swap_check, call_sim_swap_date
+
+def sim_swap_open_gsma_sandbox(request):
+    result_check = None
+    result_date = None
+    # NOTE: facing internal server error from open-GSMA
+    # REFRESH PERIODICALLY before testing (background-job)
+    # After changing os var related to GSMA restart server
+    if request.method == "POST":
+        phone = request.POST.get("phone")
+        max_age = int(request.POST.get("max_age", 120))
+
+        result_check = call_sim_swap_check(phone, max_age)
+        result_date = call_sim_swap_date(phone)
+        
+    print(f'success of sim-swap (open-gsma sandbox) view completed result_date={result_date} AND result_date={result_date} ...')
+    return render(request, "sim_swap.html", {
+        "result_check": result_check,
+        "result_date": result_date
+    })
+    
+    

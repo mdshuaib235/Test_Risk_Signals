@@ -1,92 +1,95 @@
-from django.shortcuts import render, redirect
-import uuid
 import json
-from rest_framework.views import APIView
-from rest_framework import status
-from deepfake_detection.services.sensity_client import TASK_MAP , ClientClassMap, build_public_media_url
-from deepfake_detection.serializers import DeepfakeScanSerializer, DeepfakeStatusSerializer
-from deepfake_detection.models import ServiceProvider, DeepfakeTask
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.views.decorators.csrf import csrf_exempt
+import uuid
+
+import requests
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.urls import reverse
-import requests
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from rest_framework import status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from deepfake_detection.models import DeepfakeTask, ServiceProvider
+from deepfake_detection.serializers import (
+    DeepfakeScanSerializer,
+    DeepfakeStatusSerializer,
+)
+from deepfake_detection.services.sensity_client import (
+    TASK_MAP,
+    ClientClassMap,
+    build_public_media_url,
+    verify_signature_sensity,
+)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class UploadMediaAPIViews(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     authentication_classes = []
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        print('started post in upload api', request.data)
+        print("started post in upload api", request.data)
         serializer = DeepfakeScanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print('is_valid serializer')
+        print("is_valid serializer")
 
         provider_name = request.data.get("provider", "SENSITY")
 
         provider = ServiceProvider.objects.filter(
-            name=provider_name, 
-            is_active=True
+            name=provider_name, is_active=True
         ).first()
-        print('stilllllllll')
+        print("stilllllllll")
         if not provider:
             return Response(
-                {"error": "Provider not found"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Provider not found"}, status=status.HTTP_400_BAD_REQUEST
             )
-        print('worked')
+        print("worked")
 
-        media_file = (
-            request.FILES.get("media") or 
-            request.FILES.get("file")
-        )
+        media_file = request.FILES.get("media") or request.FILES.get("file")
 
-        media_url = (
-            request.data.get("media_url") or 
-            request.data.get("url")
-        )
+        media_url = request.data.get("media_url") or request.data.get("url")
 
         if not media_file and not media_url:
             print("provide media file or url")
             return Response(
-                {"error": "Provide media file or URL"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Provide media file or URL"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if media_file and media_url:
-            print('error: only file')
+            print("error: only file")
             return Response(
-                {"error": "Provide only one: file OR URL"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Provide only one: file OR URL"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        media_type = request.data.get('media_type')
+        media_type = request.data.get("media_type")
 
         if not media_type:
-            print('error: unsupported type')
+            print("error: unsupported type")
             return Response(
-                {"error": "Unsupported media type"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Unsupported media type"}, status=status.HTTP_400_BAD_REQUEST
             )
-        print('will cleaned_data get')
+        print("will cleaned_data get")
         clean_payload = {
             "provider": provider_name,
             "media_type": media_type,
         }
 
-        base_url , localhost = build_public_media_url(), "http://localhost"
+        base_url, localhost = build_public_media_url(), "http://localhost"
         if media_url:
             if base_url and localhost in media_url:
                 clean_payload["media_url"] = media_url.replace(localhost, base_url)
-            
 
         if media_file:
-            
+
             media_file_name = media_file.name
             if base_url and localhost in media_file_name:
                 clean_payload["media"] = {
@@ -106,7 +109,7 @@ class UploadMediaAPIViews(APIView):
                     "content_type": file_obj.content_type,
                 }
 
-        print(f'data from views upload media api: data:{clean_payload}')
+        print(f"data from views upload media api: data:{clean_payload}")
 
         deepfake_task = DeepfakeTask.objects.create(
             provider=provider,
@@ -114,32 +117,32 @@ class UploadMediaAPIViews(APIView):
             media_file=media_file,
             media_url=media_url,
             request_payload=dict(clean_payload),
-            status="submitted"
+            status="uploaded",
         )
-        
+
         # clientClass = ClientClassMap[provider_name]
         # client = clientClass(token=provider.token)
         from deepfake_detection.services.sensity_client import SensityClient
+
         client = SensityClient(provider.token)
-        print('will client.create_tasks() from views...')
+        print("will client.create_tasks() from views...")
         report_ids = client.create_tasks(
-            media_file=media_file,
-            media_url=media_url,
-            media_type=media_type
+            media_file=media_file, media_url=media_url, media_type=media_type
         )
-        print(f'completed client.create_tasks() from views and here is report_ids:{report_ids}...')
+        print(
+            f"completed client.create_tasks() from views and here is report_ids:{report_ids}..."
+        )
 
         deepfake_task.report_ids = report_ids
         deepfake_task.save()
 
-        return Response({
-            "task_uuid": deepfake_task.id,
-            "report_ids": report_ids
-        }, status=status.HTTP_202_ACCEPTED)
+        return Response(
+            {"task_uuid": deepfake_task.id, "report_ids": report_ids},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
-
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class DeepfakeStatusView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -149,34 +152,37 @@ class DeepfakeStatusView(APIView):
         try:
             task_uuid = uuid.UUID(task_uuid)
         except Exception as err:
-            print('INVALID UUID format')
+            print("INVALID UUID format")
 
         print(f"started deepfake status(result) ...")
         try:
             task = DeepfakeTask.objects.get(id=task_uuid)
         except DeepfakeTask.DoesNotExist:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-        
 
-
-        if task.status in ["completed", "completed_with_errors"] and task.response_full:
-            return Response({
-                "status": task.status,
-                "media_type": str(task.media_type),
-                "payload": task.request_payload,
-                "provider": task.provider.name,
-                "created_at": task.created_at,
-                "updated_at": task.updated_at,
-                "results": task.response_full,
-                "media_url": task.media_url if task.media_url else (
-                    task.media_file.url if task.media_file else None
-                )
-            })
+        if task.status in ["completed", "completed_with_error"] and task.response_full:
+            return Response(
+                {
+                    "status": task.status,
+                    "media_type": str(task.media_type),
+                    "payload": task.request_payload,
+                    "provider": task.provider.name,
+                    "created_at": task.created_at,
+                    "updated_at": task.updated_at,
+                    "results": task.response_full,
+                    "media_url": (
+                        task.media_url
+                        if task.media_url
+                        else (task.media_file.url if task.media_file else None)
+                    ),
+                }
+            )
         from deepfake_detection.services.sensity_client import SensityClient
+
         client = SensityClient(token=task.provider.token)
 
         results = client.get_results(task.report_ids or {})
-        print('get_result success completed...')
+        print("get_result success completed...")
 
         has_in_progress = False
         has_error = False
@@ -195,28 +201,30 @@ class DeepfakeStatusView(APIView):
         if has_in_progress:
             overall = "in_progress"
         elif has_error:
-            overall = "completed_with_errors"
+            overall = "completed_with_error"
         else:
             overall = "completed"
 
         task.response_full = results
         task.status = overall
         task.save(update_fields=["response_full", "status"])
-        print('sucess of task result status api')
-        return Response({
-            "status": task.status,
-            "media_type": str(task.media_type),
-            "payload": task.request_payload,
-            "provider": task.provider.name,
-            "created_at": task.created_at,
-            "updated_at": task.updated_at,
-            "results": task.response_full,
-            "media_url": task.media_url if task.media_url else (
-                task.media_file.url if task.media_file else None
-            )
-        })
-
-
+        print("success of task result status api")
+        return Response(
+            {
+                "status": task.status,
+                "media_type": str(task.media_type),
+                "payload": task.request_payload,
+                "provider": task.provider.name,
+                "created_at": task.created_at,
+                "updated_at": task.updated_at,
+                "results": task.response_full,
+                "media_url": (
+                    task.media_url
+                    if task.media_url
+                    else (task.media_file.url if task.media_file else None)
+                ),
+            }
+        )
 
 
 class DemoUploadView(View):
@@ -234,47 +242,40 @@ class DemoUploadView(View):
         files = {}
 
         if media_file:
-            files["media"] = media_file   
+            files["media"] = media_file
         elif media_url:
             data["media_url"] = media_url
         else:
-            return render(request, self.template_name, {
-                "error": "Please upload file or provide URL"
-            })
+            return render(
+                request,
+                self.template_name,
+                {"error": "Please upload file or provide URL"},
+            )
 
-        
-        print(build_public_media_url()+"/v1/deepfake/scan/")
+        print(build_public_media_url() + "/v1/deepfake/scan/")
 
         response = requests.post(
-            url=build_public_media_url()+"/v1/deepfake/scan/",
-            data=data,
-            files=files
+            url=build_public_media_url() + "/v1/deepfake/scan/", data=data, files=files, timeout=10
         )
         try:
             task_uuid = response.json().get("task_uuid")
         except Exception as err:
             print(f"{response.text}----error in json decoding----error:{err}")
-        print('task_uuid----------------', task_uuid)
+        print("task_uuid----------------", task_uuid)
 
+        return redirect(reverse("deepfake_result_page", args=[task_uuid]))
 
-
-        return redirect(
-            reverse("deepfake_result_page", args=[task_uuid])
-        )
-    
 
 class DemoResultPageView(View):
     template_name = "demo/result.html"
 
-    def get(self, request, task_uuid,  *args, **kwargs):
-        from deepfake_detection.models import DeepfakeTask 
+    def get(self, request, task_uuid, *args, **kwargs):
+        from deepfake_detection.models import DeepfakeTask
 
         try:
             task = DeepfakeTask.objects.get(id=task_uuid)
         except DeepfakeTask.DoesNotExist:
-            return render(request, "result.html", {
-                "error": "Invalid Task ID"
-            })
+            return render(request, "result.html", {"error": "Invalid Task ID"})
 
         api_url = request.build_absolute_uri(
             reverse("deepfake_result_apiview", args=[task.id])
@@ -283,21 +284,101 @@ class DemoResultPageView(View):
         try:
             api_response = requests.get(api_url, timeout=10)
         except requests.RequestException:
-            return render(request, self.template_name, {
-                "error": "Internal API connection failed."
-            })
+            return render(
+                request,
+                self.template_name,
+                {"error": "Internal API connection failed."},
+            )
 
         if api_response.status_code != 200:
-            return render(request, self.template_name, {
-                "error": f"API returned {api_response.status_code}"
-            })
+            return render(
+                request,
+                self.template_name,
+                {"error": f"API returned {api_response.status_code}"},
+            )
 
         data = api_response.json()
         formatted_json = json.dumps(data, indent=4, default=str)
         context = {
-            "data": data,   
+            "data": data,
             "media_url": data.get("media_url"),
-             "formatted_json": formatted_json,
+            "formatted_json": formatted_json,
         }
 
         return render(request, "demo/result.html", context)
+
+
+from django.http import JsonResponse
+
+
+class SensityWebhook(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @csrf_exempt
+    def post(self, request, *args, **kwargs):
+        print(f"Started SENSITY WEBHOOK API data={request.data} ......")
+
+        try:
+            payload = request.data
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        if not verify_signature_sensity(request):
+            return JsonResponse({"error": "Invalid signature"}, status=403)
+
+        report_id = payload.get("id")
+        sensity_status = payload.get("status")
+        result = payload.get("result")
+
+        if not report_id:
+            return JsonResponse({"error": "Missing report id"}, status=400)
+
+        deepfake_task = None
+        #  optimise this
+        for task in DeepfakeTask.objects.exclude(report_ids__isnull=True):
+            if report_id in (task.report_ids or {}).values():
+                deepfake_task = task
+                break
+
+        if not deepfake_task:
+            print(f"No DeepfakeTask found for report_id {report_id}")
+            return JsonResponse({"message": "No matching task"}, status=200)
+
+        response_full = deepfake_task.response_full or {}
+
+        task_name = None
+        for key, value in (deepfake_task.report_ids or {}).items():
+            if value == report_id:
+                task_name = key
+                break
+
+        if not task_name:
+            return JsonResponse({"message": "Task name not found"}, status=200)
+
+        response_full[task_name] = {
+            "status": sensity_status,
+            "result": result,
+            "raw": payload,
+        }
+
+        statuses = [
+            v.get("status") for v in response_full.values() if isinstance(v, dict)
+        ]
+
+        if any(s not in ["completed", "completed_with_error"] for s in statuses):
+            overall = "in_progress"
+        else:
+            overall = "completed"
+
+        deepfake_task.response_full = response_full
+        deepfake_task.status = overall
+        deepfake_task.save(update_fields=["response_full", "status"])
+
+        print("Webhook processed successfully ....")
+        return Response(
+            {
+                "status": "success",
+            },
+            status=200,
+        )

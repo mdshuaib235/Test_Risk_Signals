@@ -92,7 +92,10 @@ def verify_request(request):
 import requests
 from django.conf import settings
 
-GOOGLE_PLAY_URL = "https://playintegrity.googleapis.com/v1/{package_name}:decodeIntegrityToken"
+GOOGLE_PLAY_URL = (
+    "https://playintegrity.googleapis.com/v1/{package_name}:decodeIntegrityToken"
+)
+
 
 def verify_play_integrity(token, package_name):
     url = GOOGLE_PLAY_URL.format(package_name=package_name)
@@ -100,16 +103,14 @@ def verify_play_integrity(token, package_name):
     #   1. A Google Cloud project linked to your app
     #   2. Play Integrity API enabled
     #   3. A valid GCP service account credential that your backend can use to get an access token
-    if not getattr(settings, 'GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN'):
-        return 'GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN is required', False
+    if not getattr(settings, "GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN"):
+        return "GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN is required", False
     headers = {
         "Authorization": f"Bearer {settings.GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
-    response = requests.post(url, json={
-        "integrityToken": token
-    }, headers=headers)
+    response = requests.post(url, json={"integrityToken": token}, headers=headers, timeout=10)
 
     if response.status_code != 200:
         return "Google verification failed", None

@@ -6,7 +6,7 @@ class DeepfakeScanSerializer(serializers.Serializer):
     media_url = serializers.URLField(required=False)
     provider = serializers.CharField(required=False)
     media_type = serializers.CharField(required=True)
-    
+
 
 class DeepfakeStatusSerializer(serializers.Serializer):
     task_uuid = serializers.UUIDField()

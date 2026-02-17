@@ -1,16 +1,20 @@
 import hashlib
-from datetime import timedelta
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.db import transaction
 import re
+from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.basic_crypto import encrypt_data, verify_request, verify_signature, verify_play_integrity
+from core.basic_crypto import (
+    encrypt_data,
+    verify_play_integrity,
+    verify_request,
+    verify_signature,
+)
+
 from .models import AuthLog, Bank, RegisteredApp, UserDevice
 from .serializers import BankRegistrationSerializer
 
@@ -41,9 +45,6 @@ class BankRegisterView(APIView):
         return Response({"bank_id": str(bank.id)})
 
 
-
-
-
 class AppRegisterView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -61,37 +62,30 @@ class AppRegisterView(APIView):
         if not package_name or not certificate_hash:
             return Response(
                 {"error": "package_name and certificate_hash_sha256 required"},
-                status=400
+                status=400,
             )
 
         # Validate SHA256 format (64 hex chars)
         if not re.fullmatch(r"[a-fA-F0-9]{64}", certificate_hash):
-            return Response(
-                {"error": "Invalid certificate hash format"},
-                status=400
-            )
+            return Response({"error": "Invalid certificate hash format"}, status=400)
 
         # Prevent duplicate app registration
         if RegisteredApp.objects.filter(
             bank=bank,
             package_name=package_name,
-            certificate_hash_sha256=certificate_hash
+            certificate_hash_sha256=certificate_hash,
         ).exists():
-            return Response(
-                {"error": "App already registered"},
-                status=400
-            )
+            return Response({"error": "App already registered"}, status=400)
 
         with transaction.atomic():
             RegisteredApp.objects.create(
                 bank=bank,
                 package_name=package_name,
                 certificate_hash_sha256=certificate_hash,
-                encrypted_certificate=b""  # Optional future encryption
+                encrypted_certificate=b"",  # Optional future encryption
             )
 
         return Response({"message": "App registered successfully"})
-    
 
 
 class DeviceRegisterView(APIView):
@@ -121,8 +115,7 @@ class DeviceRegisterView(APIView):
         for field in required_fields:
             if not data.get(field):
                 return Response(
-                    {"error": f"Missing or empty field: {field}"},
-                    status=400
+                    {"error": f"Missing or empty field: {field}"}, status=400
                 )
 
         # 🔎 Verify app registration
@@ -135,66 +128,51 @@ class DeviceRegisterView(APIView):
         if not app_exists:
             return Response(
                 {"decision": "BLOCK", "reason": "Invalid or unregistered app"},
-                status=403
+                status=403,
             )
 
         # 🔐 Verify Play Integrity with Google
         token = data["play_integrity_token"]
 
         # TODO: add GOOGLE_SERVICE_ACCOUNT_ACCESS_TOKEN in settings.py
-        payload, error = verify_play_integrity(
-            token,
-            data["package_name"]
-        )
+        payload, error = verify_play_integrity(token, data["package_name"])
 
         if error:
-            return Response(
-                {"decision": "BLOCK", "reason": error},
-                status=403
-            )
+            return Response({"decision": "BLOCK", "reason": error}, status=403)
 
         try:
             token_payload = payload["tokenPayloadExternal"]
             device_integrity = token_payload["deviceIntegrity"]
             app_integrity = token_payload["appIntegrity"]
 
-            device_verdict = device_integrity.get(
-                "deviceRecognitionVerdict", []
-            )
+            device_verdict = device_integrity.get("deviceRecognitionVerdict", [])
 
-            package_name_from_google = app_integrity.get(
-                "packageName"
-            )
+            package_name_from_google = app_integrity.get("packageName")
 
         except KeyError:
             return Response(
                 {"decision": "BLOCK", "reason": "Malformed integrity response"},
-                status=403
+                status=403,
             )
 
         # Verify package match
         if package_name_from_google != data["package_name"]:
             return Response(
-                {"decision": "BLOCK", "reason": "Package mismatch"},
-                status=403
+                {"decision": "BLOCK", "reason": "Package mismatch"}, status=403
             )
 
         # Verify device integrity
         if "MEETS_DEVICE_INTEGRITY" not in device_verdict:
             return Response(
-                {"decision": "BLOCK", "reason": "Device integrity failed"},
-                status=403
+                {"decision": "BLOCK", "reason": "Device integrity failed"}, status=403
             )
 
         # Prevent duplicate active device
         if UserDevice.objects.filter(
-            bank=bank,
-            bank_user_id=data["bank_user_id"],
-            status="ACTIVE"
+            bank=bank, bank_user_id=data["bank_user_id"], status="ACTIVE"
         ).exists():
             return Response(
-                {"decision": "BLOCK", "reason": "Device already registered"},
-                status=400
+                {"decision": "BLOCK", "reason": "Device already registered"}, status=400
             )
 
         # Atomic device creation (binding)
@@ -211,7 +189,7 @@ class DeviceRegisterView(APIView):
                 certificate_hash_sha256=data["certificate_hash_sha256"],
                 play_integrity_verdict=",".join(device_verdict),
                 last_validated_at=timezone.now(),
-                status="ACTIVE"
+                status="ACTIVE",
             )
 
         return Response({"decision": "ALLOW"})
@@ -234,12 +212,14 @@ class DeviceValidateView(APIView):
                 bank=bank, bank_user_id=data["bank_user_id"], status="ACTIVE"
             )
         except UserDevice.DoesNotExist:
-            return Response({
-                "decision": "BLOCK",
-                "reason": "Device not registered",
-                "risk_score": 100,
-                "risk_flags": ["DEVICE_NOT_REGISTERED"]
-            })
+            return Response(
+                {
+                    "decision": "BLOCK",
+                    "reason": "Device not registered",
+                    "risk_score": 100,
+                    "risk_flags": ["DEVICE_NOT_REGISTERED"],
+                }
+            )
 
         # Risk signals
         risk_score = 0
@@ -267,7 +247,9 @@ class DeviceValidateView(APIView):
 
         # Additional signals (play integrity, OS version drift)
         if "play_integrity_token" in data:
-            if not verify_play_integrity( data['play_integrity_token'], device.package_name):
+            if not verify_play_integrity(
+                data["play_integrity_token"], device.package_name
+            ):
                 risk_score += 20
                 risk_flags.append("PLAY_INTEGRITY_FAIL")
 
@@ -301,15 +283,13 @@ class DeviceValidateView(APIView):
                 "sim_change_detected": "SIM_CHANGED" in risk_flags,
                 "device_drift_detected": "DEVICE_MISMATCH" in risk_flags,
                 "app_integrity_failed": "APP_INTEGRITY_FAIL" in risk_flags,
-            }
+            },
         }
 
         # if sna_token:
         #     response["sna_token"] = sna_token
 
         return Response(response)
-    
-
 
 
 class DeviceRebindView(APIView):
@@ -341,8 +321,7 @@ class DeviceRebindView(APIView):
         for field in required_fields:
             if not data.get(field):
                 return Response(
-                    {"error": f"Missing or empty field: {field}"},
-                    status=400
+                    {"error": f"Missing or empty field: {field}"}, status=400
                 )
 
         # 3. Validate App Is Registered
@@ -355,54 +334,42 @@ class DeviceRebindView(APIView):
         if not app_exists:
             return Response(
                 {"decision": "BLOCK", "reason": "Unregistered or tampered app"},
-                status=403
+                status=403,
             )
 
         # 4. Verify Play Integrity With Google
         token = data["play_integrity_token"]
 
-        payload, error = verify_play_integrity(
-            token,
-            data["package_name"]
-        )
+        payload, error = verify_play_integrity(token, data["package_name"])
 
         if error:
-            return Response(
-                {"decision": "BLOCK", "reason": error},
-                status=403
-            )
+            return Response({"decision": "BLOCK", "reason": error}, status=403)
 
         try:
             token_payload = payload["tokenPayloadExternal"]
             device_integrity = token_payload["deviceIntegrity"]
             app_integrity = token_payload["appIntegrity"]
 
-            device_verdict = device_integrity.get(
-                "deviceRecognitionVerdict", []
-            )
+            device_verdict = device_integrity.get("deviceRecognitionVerdict", [])
 
-            package_name_from_google = app_integrity.get(
-                "packageName"
-            )
+            package_name_from_google = app_integrity.get("packageName")
 
         except KeyError:
             return Response(
                 {"decision": "BLOCK", "reason": "Malformed integrity response"},
-                status=403
+                status=403,
             )
 
         # 5. Verify Google Package Name Matches
         if package_name_from_google != data["package_name"]:
             return Response(
-                {"decision": "BLOCK", "reason": "Package mismatch"},
-                status=403
+                {"decision": "BLOCK", "reason": "Package mismatch"}, status=403
             )
 
         # 6. Check Device Integrity Verdict
         if "MEETS_DEVICE_INTEGRITY" not in device_verdict:
             return Response(
-                {"decision": "BLOCK", "reason": "Device integrity failed"},
-                status=403
+                {"decision": "BLOCK", "reason": "Device integrity failed"}, status=403
             )
 
         # 7. Atomic Rebind Operation
@@ -410,9 +377,7 @@ class DeviceRebindView(APIView):
 
             # Revoke previous active devices
             UserDevice.objects.filter(
-                bank=bank,
-                bank_user_id=data["bank_user_id"],
-                status="ACTIVE"
+                bank=bank, bank_user_id=data["bank_user_id"], status="ACTIVE"
             ).update(status="REVOKED")
 
             # Create new trusted device
@@ -427,11 +392,10 @@ class DeviceRebindView(APIView):
                 certificate_hash_sha256=data["certificate_hash_sha256"],
                 play_integrity_verdict=",".join(device_verdict),
                 last_validated_at=timezone.now(),
-                status="ACTIVE"
+                status="ACTIVE",
             )
 
         return Response({"decision": "ALLOW"})
-    
 
 
 class DeviceRevokeView(APIView):

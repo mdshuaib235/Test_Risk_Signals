@@ -7,17 +7,31 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='ServiceProvider',
+            name="ServiceProvider",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(choices=[('SENSITY', 'Sensity'), ('OTHER', 'Other')], default='SENSITY', max_length=55)),
-                ('token', models.CharField(max_length=555)),
-                ('is_active', models.BooleanField(blank=True, default=True, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        choices=[("SENSITY", "Sensity"), ("OTHER", "Other")],
+                        default="SENSITY",
+                        max_length=55,
+                    ),
+                ),
+                ("token", models.CharField(max_length=555)),
+                ("is_active", models.BooleanField(blank=True, default=True, null=True)),
             ],
         ),
     ]

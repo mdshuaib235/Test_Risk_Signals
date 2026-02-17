@@ -17,22 +17,18 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
     #  expose ngrok
-    from pyngrok import ngrok
     import requests
-    
+    from pyngrok import ngrok
+
     try:
         ngrok.kill()
-        response = requests.get("http://127.0.0.1:4040/api/tunnels")
+        response = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=10)
         tunnels = response.json()["tunnels"]
         print(f'NGROK URL : {tunnels[0]["public_url"]}')
     except Exception as e:
         print("Ngrok not running:", e)
-        
-
-   
 
     execute_from_command_line(sys.argv)
-
 
 
 if __name__ == "__main__":

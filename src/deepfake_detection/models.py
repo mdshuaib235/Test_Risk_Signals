@@ -1,18 +1,23 @@
-from django.db import models
 import uuid
 
+from django.db import models
+
 # Create your models here.
+
 
 class ServiceProviderChoices(models.TextChoices):
     SENSITY = "SENSITY", "Sensity"
     OTHER = "OTHER", "Other"
 
+
 class SensityTaskChoices(models.TextChoices):
     face_manipulation = "face_manipulation", "face_manipulation"
-    ai_generated_image_detection = "ai_generated_image_detection" , "ai_generated_image_detection"
+    ai_generated_image_detection = (
+        "ai_generated_image_detection",
+        "ai_generated_image_detection",
+    )
     voice_analysis = "voice_analysis", "voice_analysis"
-    forensic_analysis = 'forensic_analysis', 'forensic_analysis'
-    other = "other", "other"
+    forensic_analysis = "forensic_analysis", "forensic_analysis"
 
 
 class ServiceProvider(models.Model):
@@ -32,25 +37,38 @@ class DeepfakeTask(models.Model):
         ("audio", "Audio"),
     ]
 
+    STATUS_CHOICES = [
+        ("uploaded", "uploaded"),
+        ("in_progress", "in_progress"),
+        ("completed", "completed"),
+        ("completed_with_error", "completed_with_error"),
+        ("failed", "failed"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     provider = models.ForeignKey(
-        "deepfake_detection.ServiceProvider",
-        on_delete=models.CASCADE
+        "deepfake_detection.ServiceProvider", on_delete=models.CASCADE
     )
 
-    media_type = models.CharField(max_length=10, choices=MEDIA_TYPE_CHOICES)
+    media_type = models.CharField(
+        max_length=10, choices=MEDIA_TYPE_CHOICES, default=MEDIA_TYPE_CHOICES[0][0]
+    )
     media_file = models.FileField(upload_to="uploads/", null=True, blank=True)
     media_url = models.URLField(null=True, blank=True)
 
     request_payload = models.JSONField(null=True, blank=True)
     report_ids = models.JSONField(null=True, blank=True)
-    response_full = models.JSONField(null=True, blank=True) 
-    #  result
+    response_full = models.JSONField(null=True, blank=True)
 
-    status = models.CharField(max_length=50, default="created")
+    status = models.CharField(
+        max_length=50, default=STATUS_CHOICES[0][0], choices=STATUS_CHOICES
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"DeepfakeTaskID: {self.id}"
+        return f"DeepfakeTaskID: {self.id} & Created-at: {self.created_at}"
+
+    class Meta:
+        ordering = ["created_at"]
