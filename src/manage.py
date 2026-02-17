@@ -27,7 +27,7 @@ def main():
         print(f'NGROK URL : {tunnels[0]["public_url"]}')
     except Exception as e:
         print("Ngrok not running:", e)
-        return None
+        
 
    
 

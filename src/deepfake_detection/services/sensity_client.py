@@ -62,6 +62,7 @@ TASK_MAP = {
         "face_manipulation",
         "ai_generated_image_detection",
         "forensic_analysis",
+        'voice_analysis'
     ],
     "audio": [
         "voice_analysis",

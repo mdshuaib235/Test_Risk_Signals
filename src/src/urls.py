@@ -25,6 +25,7 @@ urlpatterns = [
     path("admin/", admin.site.urls), 
     path("v1/", include("core.urls")),
     path("v1/deepfake/", include("deepfake_detection.urls")),
+    path("v1/sim-number/" ,  include("external_service_for_auth.urls")),
     
 ]
 
