@@ -255,7 +255,7 @@ class DemoUploadView(View):
         print(build_public_media_url() + "/v1/deepfake/scan/")
 
         response = requests.post(
-            url=build_public_media_url() + "/v1/deepfake/scan/", data=data, files=files, timeout=10
+            url=build_public_media_url() + "/v1/deepfake/scan/", data=data, files=files, timeout=60
         )
         try:
             task_uuid = response.json().get("task_uuid")
@@ -282,7 +282,7 @@ class DemoResultPageView(View):
         )
 
         try:
-            api_response = requests.get(api_url, timeout=10)
+            api_response = requests.get(api_url, timeout=60)
         except requests.RequestException:
             return render(
                 request,

@@ -213,3 +213,7 @@ __marimo__/
 .venv
 .env
 *.env
+
+
+*private.key
+private.key*

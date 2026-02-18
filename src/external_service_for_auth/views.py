@@ -17,9 +17,7 @@ from vonage_network_sim_swap.requests import SimSwapCheckRequest
 from vonage_network_auth import NetworkAuth
 from vonage_http_client import HttpClient
 from django.conf import settings
-import os
-import requests
-from django.conf import settings
+from .utils import call_sim_swap_check_frm_gsma, call_sim_swap_date_from_gsma, check_sim_swap_from_vonage
 
 # TODO: convert GET api to POST
 class TestNumberInsights(APIView):
@@ -137,10 +135,9 @@ class NetworkSimSwapAPIView(APIView):
             return Response({"error": str(e)}, status=500)
         
         
-# OPEN GSMA gateapi / CAMARA suite project using sanbox
-from .utils import call_sim_swap_check, call_sim_swap_date
 
-def sim_swap_open_gsma_sandbox(request):
+
+def SimSwapOpenGSMASandboxs(request):
     result_check = None
     result_date = None
     # NOTE: facing internal server error from open-GSMA
@@ -150,8 +147,8 @@ def sim_swap_open_gsma_sandbox(request):
         phone = request.POST.get("phone")
         max_age = int(request.POST.get("max_age", 120))
 
-        result_check = call_sim_swap_check(phone, max_age)
-        result_date = call_sim_swap_date(phone)
+        result_check = call_sim_swap_check_frm_gsma(phone, max_age)
+        result_date = call_sim_swap_date_from_gsma(phone)
         
     print(f'success of sim-swap (open-gsma sandbox) view completed result_date={result_date} AND result_date={result_date} ...')
     return render(request, "sim_swap.html", {
@@ -159,4 +156,30 @@ def sim_swap_open_gsma_sandbox(request):
         "result_date": result_date
     })
     
+    
+
+class VonageSimSwap(APIView):
+    def post(self, request, *args, **kwargs):
+        phone_number = request.GET.get("phone_number")
+        json_response = check_sim_swap_from_vonage(phone_number)
+        print('completed check_sim_swap_from_vonage function: response:', json_response)
+        return Response({"status":"success", "data": json_response}, status=200)
+    
+    
+    
+def SimInsightDemo(request):
+    number = request.GET.get("number", "919818425790")
+
+    api_url = f"http://localhost:8000/v1/sim-number/insights/{number}/"
+
+    try:
+        response = requests.get(api_url, timeout=5)
+        data = response.json()
+    except Exception as e:
+        data = {"status_message": "Error", "error": str(e)}
+
+    return render(request, "sim_insight_demo.html", {
+        "data": data,
+        "number": number
+    })
     

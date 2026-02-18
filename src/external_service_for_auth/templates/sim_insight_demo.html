@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIM Intelligence Risk Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --bg1:#0f172a;
+    --bg2:#1e293b;
+    --primary:#6366f1;
+    --accent:#06b6d4;
+    --success:#10b981;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+    --glass:rgba(255,255,255,0.05);
+    --border:rgba(255,255,255,0.08);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+
+body{
+    background: radial-gradient(circle at 10% 20%,#1e293b,#0f172a 60%);
+    color:white;
+    min-height:100vh;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:60px 30px;
+}
+
+h1{
+    font-size:44px;
+    font-weight:800;
+    background:linear-gradient(to right,var(--primary),var(--accent));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    color:#94a3b8;
+    margin-bottom:40px;
+}
+
+.search{
+    display:flex;
+    gap:15px;
+    margin-bottom:40px;
+}
+
+.search input{
+    flex:1;
+    padding:16px 24px;
+    border-radius:40px;
+    border:none;
+    background:rgba(255,255,255,0.07);
+    color:white;
+    font-size:16px;
+    outline:none;
+}
+
+.search button{
+    padding:16px 30px;
+    border-radius:40px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    background:linear-gradient(to right,var(--primary),var(--accent));
+    color:white;
+    transition:0.3s;
+}
+.search button:hover{transform:scale(1.05);}
+
+.loader{
+    display:none;
+    margin:40px auto;
+    width:50px;height:50px;
+    border-radius:50%;
+    border:4px solid rgba(255,255,255,0.1);
+    border-top:4px solid var(--primary);
+    animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* GRID */
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:25px;
+}
+
+.card{
+    background:var(--glass);
+    border:1px solid var(--border);
+    backdrop-filter:blur(14px);
+    padding:30px;
+    border-radius:18px;
+    transition:0.3s;
+}
+.card:hover{
+    transform:translateY(-6px);
+    border-color:var(--primary);
+}
+
+.label{
+    font-size:13px;
+    color:#94a3b8;
+    margin-bottom:10px;
+}
+
+.value{
+    font-size:20px;
+    font-weight:700;
+}
+
+.badge{
+    padding:6px 14px;
+    border-radius:30px;
+    font-size:12px;
+    font-weight:600;
+}
+.success{background:rgba(16,185,129,0.15);color:var(--success);}
+.danger{background:rgba(239,68,68,0.15);color:var(--danger);}
+.warning{background:rgba(245,158,11,0.15);color:var(--warning);}
+
+/* RISK CIRCLE */
+.risk-container{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin-bottom:30px;
+}
+
+.risk-circle{
+    width:180px;
+    height:180px;
+    border-radius:50%;
+    background:conic-gradient(var(--success) 0deg, var(--success) 360deg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+}
+.risk-inner{
+    width:140px;height:140px;
+    background:var(--bg1);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    font-weight:800;
+}
+
+/* JSON */
+.json-toggle{
+    margin-top:40px;
+    cursor:pointer;
+    color:var(--accent);
+}
+.json-view{
+    display:none;
+    margin-top:20px;
+    background:#0b1220;
+    padding:25px;
+    border-radius:16px;
+    max-height:400px;
+    overflow:auto;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>SIM Intelligence Risk Engine</h1>
+<div class="subtitle">Real-time Carrier, Porting & Number Validation Intelligence</div>
+
+<div class="search">
+    <input type="text" id="phoneInput" placeholder="Enter Mobile Number (e.g. 919818425790)">
+    <button onclick="analyze()">Analyze</button>
+</div>
+
+<div class="loader" id="loader"></div>
+
+<div id="dashboard"></div>
+
+<div class="json-toggle" onclick="toggleJson()">View Full Structured API Response</div>
+<div class="json-view" id="jsonBlock"></div>
+
+</div>
+
+<script>
+let latestData=null;
+
+function analyze(){
+    const number=document.getElementById("phoneInput").value.trim();
+    if(!number) return alert("Enter number");
+
+    document.getElementById("dashboard").innerHTML="";
+    document.getElementById("loader").style.display="block";
+
+    fetch(`/v1/sim-number/insights/${number}/`)
+    .then(res=>res.json())
+    .then(data=>{
+        latestData=data;
+        document.getElementById("loader").style.display="none";
+        renderDashboard(data);
+    })
+    .catch(()=>{
+        document.getElementById("loader").style.display="none";
+        alert("API Error");
+    });
+}
+
+function renderDashboard(data){
+
+
+    let riskScore=0;
+    if(data.valid_number!=="valid") riskScore+=50;
+    if(data.ported==="ported") riskScore+=30;
+    if(data.roaming==="yes") riskScore+=20;
+
+    const riskColor = riskScore<30 ? "var(--success)" :
+                      riskScore<60 ? "var(--warning)" :
+                                     "var(--danger)";
+
+    document.getElementById("dashboard").innerHTML=`
+
+    <div class="risk-container">
+        <div class="risk-circle" style="background:conic-gradient(${riskColor} ${riskScore*3.6}deg,#1e293b 0deg);">
+            <div class="risk-inner">${riskScore}%</div>
+        </div>
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="label">International Format</div>
+            <div class="value">${data.international_format_number}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">National Format</div>
+            <div class="value">${data.national_format_number}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Country Intelligence</div>
+            <div class="value">${data.country_name} (${data.country_code_iso3})</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Validation Status</div>
+            <div class="value">
+                <span class="badge ${data.valid_number==="valid"?"success":"danger"}">
+                ${data.valid_number}
+                </span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="label">Porting Status</div>
+            <div class="value">${data.ported}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Roaming</div>
+            <div class="value">${data.roaming}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Current Carrier</div>
+            <div class="value">${data.current_carrier.name}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Original Carrier</div>
+            <div class="value">${data.original_carrier.name}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Network Type</div>
+            <div class="value">${data.current_carrier.network_type}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Request Cost</div>
+            <div class="value">$${data.request_price}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Remaining Balance</div>
+            <div class="value">$${data.remaining_balance}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Lookup Outcome</div>
+            <div class="value">${data.lookup_outcome_message}</div>
+        </div>
+
+    </div>
+    `;
+
+    document.getElementById("jsonBlock").innerHTML=
+        `<pre>${JSON.stringify(data,null,2)}</pre>`;
+}
+
+function toggleJson(){
+    const el=document.getElementById("jsonBlock");
+    el.style.display=el.style.display==="block"?"none":"block";
+}
+</script>
+
+</body>
+</html>
