@@ -195,12 +195,27 @@ DATA_RESIDENCY = os.getenv("IDLAYR_DATA_RESIDENCY").lower()
 @csrf_exempt
 def idlayr_callback(request):
     # IDlayr sends POST here when status COMPLETED/ERROR/EXPIRED
+#     {
+#   "check_id": "c2b0ac55-9184-4bbe-9ce9-2147fcd9e63e",
+#   "status": "COMPLETED",
+#   "match": true,
+#   "charge_amount": 1.0,
+#   "charge_currency": "API",
+#   "created_at": "2020-09-18T14:51:54+0000"
+# }
     try:
         payload = request.body.decode()
         print("IDlayr callback:", payload)
     except Exception as e:
         print("Callback parse error:", str(e))
-    print("running idlayr_callback views success...")
+    
+    obj = SNARequest.objects.filter(
+        data__icontains =  payload['check_id']
+    )
+    if payload['status'] == 'COMPLETED' and payload['match']:
+        obj.result = True
+        obj.save(updated_fields=['result',])
+    print(f"running idlayr_callback views success with data={payload}...")
     return JsonResponse({"status": "ok"})
 
 
