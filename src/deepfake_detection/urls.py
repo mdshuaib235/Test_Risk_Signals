@@ -1,6 +1,3 @@
-from django.contrib import admin
-from django.urls import include, path
-
 from deepfake_detection.views import (
     DeepfakeStatusView,
     DemoResultPageView,
@@ -8,6 +5,8 @@ from deepfake_detection.views import (
     SensityWebhook,
     UploadMediaAPIViews,
 )
+from django.contrib import admin
+from django.urls import include, path
 
 urlpatterns = [
     path("scan/", UploadMediaAPIViews.as_view(), name="deepfake_upload_apiview"),

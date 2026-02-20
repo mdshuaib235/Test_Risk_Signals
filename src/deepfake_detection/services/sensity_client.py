@@ -4,13 +4,12 @@ import time
 from typing import Any, Dict, Optional
 
 import requests
-from django.conf import settings
-
 from deepfake_detection.models import (
     SensityTaskChoices,
     ServiceProvider,
     ServiceProviderChoices,
 )
+from django.conf import settings
 
 BASE_URL = "https://api.sensity.ai/tasks"
 from abc import ABC, abstractmethod
@@ -106,7 +105,7 @@ class SensityClient(ProviderClient):
 
         if not media_file and not media_url:
             return {"error": "Provide media_file or media_url"}
-
+        from utils.commons import build_public_media_url
         base_ngrok_url, localhost = build_public_media_url(), "http://127.0.0.1:8000"
         for task_name in tasks:
             try:
@@ -191,18 +190,6 @@ class SensityClient(ProviderClient):
 
 import requests
 
-
-def build_public_media_url():
-    if settings.DEBUG:
-        # ngrok should be running manually for testing
-        try:
-            tunnels = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=10).json()
-            return tunnels["tunnels"][0]["public_url"]
-        except Exception:
-            return None
-    else:
-        #  return hosted/deployed domain after deployments
-        return None
 
 
 ClientClassMap = {

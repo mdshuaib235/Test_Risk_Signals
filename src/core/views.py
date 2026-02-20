@@ -2,18 +2,17 @@ import hashlib
 import re
 from datetime import timedelta
 
-from django.db import transaction
-from django.utils import timezone
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from core.basic_crypto import (
     encrypt_data,
     verify_play_integrity,
     verify_request,
     verify_signature,
 )
+from django.db import transaction
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import AuthLog, Bank, RegisteredApp, UserDevice
 from .serializers import BankRegistrationSerializer

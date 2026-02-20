@@ -2,6 +2,16 @@ import json
 import uuid
 
 import requests
+from deepfake_detection.models import DeepfakeTask, ServiceProvider
+from deepfake_detection.serializers import (
+    DeepfakeScanSerializer,
+    DeepfakeStatusSerializer,
+)
+from deepfake_detection.services.sensity_client import (
+    TASK_MAP,
+    ClientClassMap,
+    verify_signature_sensity,
+)
 from django.conf import settings
 from django.db import transaction
 from django.shortcuts import redirect, render
@@ -14,18 +24,7 @@ from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from deepfake_detection.models import DeepfakeTask, ServiceProvider
-from deepfake_detection.serializers import (
-    DeepfakeScanSerializer,
-    DeepfakeStatusSerializer,
-)
-from deepfake_detection.services.sensity_client import (
-    TASK_MAP,
-    ClientClassMap,
-    build_public_media_url,
-    verify_signature_sensity,
-)
+from utils.commons import build_public_media_url
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -255,7 +254,10 @@ class DemoUploadView(View):
         print(build_public_media_url() + "/v1/deepfake/scan/")
 
         response = requests.post(
-            url=build_public_media_url() + "/v1/deepfake/scan/", data=data, files=files, timeout=60
+            url=build_public_media_url() + "/v1/deepfake/scan/",
+            data=data,
+            files=files,
+            timeout=60,
         )
         try:
             task_uuid = response.json().get("task_uuid")

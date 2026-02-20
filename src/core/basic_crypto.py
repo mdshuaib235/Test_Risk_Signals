@@ -110,7 +110,9 @@ def verify_play_integrity(token, package_name):
         "Content-Type": "application/json",
     }
 
-    response = requests.post(url, json={"integrityToken": token}, headers=headers, timeout=10)
+    response = requests.post(
+        url, json={"integrityToken": token}, headers=headers, timeout=10
+    )
 
     if response.status_code != 200:
         return "Google verification failed", None

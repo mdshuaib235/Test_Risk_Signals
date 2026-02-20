@@ -1,10 +1,9 @@
 from unittest.mock import patch
 
+from core.models import Bank, RegisteredApp, UserDevice
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from core.models import Bank, RegisteredApp, UserDevice
 
 
 class SecurityFlowTests(TestCase):
